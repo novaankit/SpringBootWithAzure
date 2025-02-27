@@ -80,8 +80,8 @@
 				<artifactId>azure-functions-maven-plugin</artifactId>
 				<version>1.35.0</version>
 				<configuration>
-					<resourceGroup>myResourceGroup</resourceGroup>
-					<appName>myFunctionApp2</appName>
+					<resourceGroup>ResourceGroup1</resourceGroup>
+					<appName>functions-action-1</appName>
 					<region>eastus</region>
 				</configuration>
 				<executions>
