@@ -1,67 +1,54 @@
-# This workflow will build a Java project and deploy it to an Azure Functions App on Windows or Linux when a commit is pushed to your default branch.
-#
-# This workflow assumes you have already created the target Azure Functions app.
-# For instructions see https://learn.microsoft.com/en-us/azure/azure-functions/create-first-function-vs-code-java
-#
-# To configure this workflow:
-# 1. Set up the following secrets in your repository:
-#   - AZURE_FUNCTIONAPP_PUBLISH_PROFILE
-# 2. Change env variables for your configuration.
-#
-# For more information on:
-#   - GitHub Actions for Azure: https://github.com/Azure/Actions
-#   - Azure Functions Action: https://github.com/Azure/functions-action
-#   - Publish Profile: https://github.com/Azure/functions-action#using-publish-profile-as-deployment-credential-recommended
-#   - Azure Service Principal for RBAC: https://github.com/Azure/functions-action#using-azure-service-principal-for-rbac-as-deployment-credential
-#
-# For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples/tree/master/FunctionApp
-
 name: Deploy Java project to Azure Function App
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main  # Trigger the deployment on push to the main branch
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'MyFunctionApplication1'   # set this to your function app name on Azure
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
- # POM_XML_DIRECTORY: '.'                    # set this to the directory which contains pom.xml file
-  DISTRIBUTION: 'temurin'                      # set this to the java version to use (e.g. 'zulu', 'temurin', 'microsoft')
-  JAVA_VERSION: '17'                         # set this to the java version to use (e.g. '8', '11', '17')
+  AZURE_FUNCTIONAPP_NAME: 'MyFunctionApplication1'  # Azure Function App name
+  POM_XML_DIRECTORY: '.'                            # Directory where pom.xml is located
+  DISTRIBUTION: 'temurin'                           # JDK distribution (e.g., 'zulu', 'temurin', etc.)
+  JAVA_VERSION: '17'                                # Java version (e.g., '8', '11', '17')
 
 jobs:
   build-and-deploy:
-    runs-on: windows-latest # For Linux, use ubuntu-latest
+    runs-on: ubuntu-latest # Use ubuntu-latest for Linux-based environments
     environment: dev
     steps:
-    - name: 'Checkout GitHub Action'
+    
+    # Checkout the repository to get the latest code
+    - name: Checkout GitHub repository
       uses: actions/checkout@v4
 
-    # If you want to use Azure RBAC instead of Publish Profile, then uncomment the task below
-    #- name: 'Login via Azure CLI'
-    #  uses: azure/login@v1
-    #  with:
-    #   creds: ${{ secrets.AZURE_CREDENTIALS }} # set up AZURE_RBAC_CREDENTIALS secrets in your repository
+    # Set up Azure login with the service principal credentials stored in GitHub Secrets
+    - name: Login via Azure CLI
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}  # Ensure this secret is stored in GitHub Secrets
 
-    - name: 'Restore Project Dependencies Using Mvn'
-      shell: pwsh # For Linux, use bash
-      run: |
-        pushd './${{ env.POM_XML_DIRECTORY }}'
-        mvn clean package
-        popd
-
-    - name: Setup Java Sdk ${{ env.JAVA_VERSION }}
+    # Set up the Java SDK (Java 17 in this case)
+    - name: Set up Java SDK ${{ env.JAVA_VERSION }}
       uses: actions/setup-java@v4
       with:
         distribution: ${{ env.DISTRIBUTION }}
         java-version: ${{ env.JAVA_VERSION }}
 
-    - name: 'Run Azure Functions Action'
+    # Restore project dependencies and build the project with Maven
+    - name: Restore project dependencies and package with Maven
+      shell: bash
+      run: |
+        pushd ./${{ env.POM_XML_DIRECTORY }}
+        mvn clean package
+        popd
+
+    # List the contents of the target directory to verify the packaging process
+    - name: List contents of target/azure-functions directory
+      run: ls target/azure-functions
+
+    # Deploy the packaged Azure Function using the Azure Functions GitHub Action
+    - name: Deploy to Azure Function App
       uses: Azure/functions-action@v1
-      id: package-azure-functions
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: "target/azure-functions/MyFunctionApplication1"
-        package: '${{ env.POM_XML_DIRECTORY }}' # if there are multiple function apps in same project, then this path will be like './${{ env.POM_XML_DIRECTORY }}/target/azure-functions/${{ env.POM_FUNCTIONAPP_NAME }'
-        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }} 
-      #  respect-pom-xml: true
+        package: "target/azure-functions/${{ env.AZURE_FUNCTIONAPP_NAME }}"  # Path to your Azure Function package
