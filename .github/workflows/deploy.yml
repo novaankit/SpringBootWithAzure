@@ -42,7 +42,7 @@ jobs:
         mvn clean package
         popd
 
-    # List the contents of the target directory to verify the packaging process
+    # List of the contents of the target directory to verify the packaging process
     - name: List contents of target/azure-functions directory
       run: ls target/azure-functions
 
